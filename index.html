@@ -155,6 +155,36 @@
             padding-right: 45px;
         }
 
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border-radius: 50%;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            cursor: pointer;
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+        }
+
         .color-input-group {
             display: flex;
             gap: 12px;
@@ -233,6 +263,11 @@
             font-size: 12px;
         }
 
+        .range-value {
+            color: #667eea;
+            font-weight: 700;
+        }
+
         select option {
             background: #1a1a2e;
             color: #fff;
@@ -253,6 +288,25 @@
             <div class="control-group">
                 <label>Upload Background</label>
                 <input type="file" id="imageUpload" accept="image/*">
+            </div>
+
+            <div class="control-group">
+                <label>Image Effect</label>
+                <select id="imageEffect">
+                    <option value="none">None</option>
+                    <option value="blur">Blur</option>
+                    <option value="vignette">Vignette</option>
+                    <option value="grayscale">Grayscale</option>
+                    <option value="sepia">Sepia</option>
+                    <option value="saturate">Saturate</option>
+                    <option value="contrast">Contrast</option>
+                    <option value="brightness">Brightness</option>
+                </select>
+            </div>
+
+            <div class="control-group" id="intensityControl" style="display: none;">
+                <label>Intensity: <span class="range-value" id="intensityValue">50</span><span id="intensityUnit">%</span></label>
+                <input type="range" id="intensitySlider" min="0" max="100" value="50">
             </div>
             
             <div class="control-group">
@@ -356,11 +410,43 @@
             const userColor = document.getElementById('userColor').value;
             const packFont = document.getElementById('packFont').value;
             const userFont = document.getElementById('userFont').value;
+            const effect = document.getElementById('imageEffect').value;
+            const intensity = document.getElementById('intensitySlider').value;
             
             ctx.clearRect(0, 0, size, size);
             
             if (uploadedImage) {
+                ctx.filter = 'none';
+                
+                if (effect === 'blur') {
+                    const blurAmount = (intensity / 100) * 20;
+                    ctx.filter = `blur(${blurAmount}px)`;
+                } else if (effect === 'grayscale') {
+                    ctx.filter = `grayscale(${intensity}%)`;
+                } else if (effect === 'sepia') {
+                    ctx.filter = `sepia(${intensity}%)`;
+                } else if (effect === 'saturate') {
+                    const satValue = 100 + ((intensity - 50) * 2);
+                    ctx.filter = `saturate(${satValue}%)`;
+                } else if (effect === 'contrast') {
+                    const contValue = 100 + ((intensity - 50) * 2);
+                    ctx.filter = `contrast(${contValue}%)`;
+                } else if (effect === 'brightness') {
+                    const brightValue = 100 + ((intensity - 50) * 2);
+                    ctx.filter = `brightness(${brightValue}%)`;
+                }
+                
                 ctx.drawImage(uploadedImage, 0, 0, size, size);
+                ctx.filter = 'none';
+                
+                if (effect === 'vignette') {
+                    const vignetteStrength = (intensity / 100) * 0.8;
+                    const vignetteGradient = ctx.createRadialGradient(size/2, size/2, size/4, size/2, size/2, size/1.2);
+                    vignetteGradient.addColorStop(0, 'rgba(0,0,0,0)');
+                    vignetteGradient.addColorStop(1, `rgba(0,0,0,${vignetteStrength})`);
+                    ctx.fillStyle = vignetteGradient;
+                    ctx.fillRect(0, 0, size, size);
+                }
             } else {
                 const gradient = ctx.createLinearGradient(0, 0, size, size);
                 gradient.addColorStop(0, '#667eea');
@@ -389,6 +475,26 @@
             
             document.getElementById('packColorText').value = packColor;
             document.getElementById('userColorText').value = userColor;
+        }
+
+        function updateIntensityControl() {
+            const effect = document.getElementById('imageEffect').value;
+            const control = document.getElementById('intensityControl');
+            const unit = document.getElementById('intensityUnit');
+            
+            if (effect === 'none') {
+                control.style.display = 'none';
+            } else {
+                control.style.display = 'block';
+                
+                if (effect === 'blur') {
+                    unit.textContent = 'px';
+                    document.getElementById('intensityValue').textContent = Math.round((document.getElementById('intensitySlider').value / 100) * 20);
+                } else {
+                    unit.textContent = '%';
+                    document.getElementById('intensityValue').textContent = document.getElementById('intensitySlider').value;
+                }
+            }
         }
         
         function downloadIcon() {
@@ -426,6 +532,17 @@
         document.getElementById('userColor').addEventListener('input', drawIcon);
         document.getElementById('packFont').addEventListener('change', drawIcon);
         document.getElementById('userFont').addEventListener('change', drawIcon);
+        
+        document.getElementById('imageEffect').addEventListener('change', function() {
+            document.getElementById('intensitySlider').value = 50;
+            updateIntensityControl();
+            drawIcon();
+        });
+        
+        document.getElementById('intensitySlider').addEventListener('input', function() {
+            updateIntensityControl();
+            drawIcon();
+        });
         
         drawIcon();
     </script>
